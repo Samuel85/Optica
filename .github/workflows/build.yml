@@ -9,7 +9,9 @@
 #
 # Every push to main, pull request and manual run builds all of them and keeps the packages
 # as the run's artifacts. Pushing a tag that starts with "v" (e.g. v1.0.0) also publishes
-# them as a GitHub release named after the tag.
+# them as a GitHub release named after the tag. A manual run (Actions > Build > Run
+# workflow) given a release tag publishes them to that release: added to it if it exists
+# (replacing packages of the same name), otherwise a new release at the commit built.
 #
 # SDL3 and Dear ImGui are cloned by CMake at configure time (platform/sdl/CMakeLists.txt).
 # Third-party actions are pinned to the commit of a release, with the release in a comment.
@@ -22,6 +24,11 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Also publish the packages to this release, e.g. v1.0.0 (leave empty to only build)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -31,8 +38,10 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # in package names: the tag for a release, otherwise the run number
-  VERSION: ${{ github.ref_type == 'tag' && github.ref_name || format('build{0}', github.run_number) }}
+  # the release to publish to, if any: a manual run's release_tag, or a pushed "v" tag
+  RELEASE_TAG: ${{ inputs.release_tag || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && github.ref_name) || '' }}
+  # in package names: the release, otherwise the run number
+  VERSION: ${{ inputs.release_tag || (github.ref_type == 'tag' && github.ref_name) || format('build{0}', github.run_number) }}
 
 jobs:
   windows:
@@ -171,7 +180,7 @@ jobs:
 
   release:
     name: Publish release
-    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    if: inputs.release_tag != '' || (github.ref_type == 'tag' && startsWith(github.ref_name, 'v'))
     needs: [windows, linux, android, ios]
     runs-on: ubuntu-24.04
     permissions:
@@ -182,10 +191,14 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Create the release
+      - name: Publish to the release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           ls -l dist
-          gh release create "$GITHUB_REF_NAME" dist/* \
-            --repo "$GITHUB_REPOSITORY" --title "Optica $GITHUB_REF_NAME" --generate-notes
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/* --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" --title "Optica $RELEASE_TAG" --generate-notes
+          fi

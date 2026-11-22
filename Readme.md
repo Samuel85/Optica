@@ -31,3 +31,6 @@ To publish a release with these packages, push a tag starting with `v`:
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+To add the packages to a release that already exists (or one made in GitHub's web page),
+run the workflow by hand: *Actions* > *Build* > *Run workflow*, with the release's tag.
