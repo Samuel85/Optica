@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon: a lens on the optical axis with rays focused through it,
+     in the program's colours. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path android:fillColor="#000000"
+        android:pathData="M4,0 L44,0 Q48,0 48,4 L48,44 Q48,48 44,48 L4,48 Q0,48 0,44 L0,4 Q0,0 4,0 Z" />
+    <path android:strokeColor="#64C802" android:strokeWidth="1.2"
+        android:pathData="M3,24 L45,24" />
+    <path android:strokeColor="#FFFF00" android:strokeWidth="1.2"
+        android:pathData="M4,14 L24,14 L42,30 M4,34 L24,34 L42,18" />
+    <path android:fillColor="#FFFFFF" android:strokeColor="#64C802" android:strokeWidth="1"
+        android:pathData="M24,8 C28,13 28,35 24,40 C20,35 20,13 24,8 Z" />
+</vector>

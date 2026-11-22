@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Optica for Android. Based on SDL 3.4.8's android-project template: the activity is
+     SDL's own, which loads libSDL3.so and libmain.so (the program). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:installLocation="auto">
+
+    <!-- OpenGL ES 2.0, used by SDL's renderer -->
+    <uses-feature android:glEsVersion="0x00020000" />
+
+    <!-- A touch screen or a mouse -->
+    <uses-feature
+        android:name="android.hardware.touchscreen"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.type.pc"
+        android:required="false" />
+
+    <application android:label="@string/app_name"
+        android:icon="@drawable/ic_launcher"
+        android:allowBackup="true"
+        android:theme="@style/AppTheme"
+        android:enableOnBackInvokedCallback="false"
+        android:hardwareAccelerated="true" >
+
+        <!-- Landscape only: the bench needs the width (560 x 400 at the least) -->
+        <activity android:name="org.libsdl.app.SDLActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="sensorLandscape"
+            android:alwaysRetainTaskState="true"
+            android:launchMode="singleInstance"
+            android:configChanges="layoutDirection|locale|grammaticalGender|fontScale|fontWeightAdjustment|orientation|uiMode|screenLayout|screenSize|smallestScreenSize|keyboard|keyboardHidden|navigation"
+            android:preferMinimalPostProcessing="true"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

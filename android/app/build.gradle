@@ -1,0 +1,50 @@
+// Optica for Android. The native code is the project's own CMake build (../../CMakeLists.txt)
+// with the SDL3 + Dear ImGui front end; it produces libmain.so and libSDL3.so, which
+// SDL's Java activity (src/main/java/org/libsdl/app, from SDL 3.4.8) loads at start-up.
+
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace = "com.example.optica"           // also the application id: change it before publishing
+    compileSdkVersion 35
+    ndkVersion = "28.2.13676358"
+
+    defaultConfig {
+        applicationId "com.example.optica"
+        minSdkVersion 21
+        targetSdkVersion 35
+        versionCode 1
+        versionName "1.0"
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-21",
+                          "-DANDROID_STL=c++_static",
+                          "-DOPTICA_FRONTEND=SDL"
+                // phones and tablets (arm64), and the emulator on a PC (x86_64)
+                abiFilters 'arm64-v8a', 'x86_64'
+                // the program (libmain.so) and SDL (libSDL3.so); nothing else is needed
+                targets 'optica', 'SDL3-shared'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../CMakeLists.txt'
+        }
+    }
+
+    lint {
+        abortOnError = false
+    }
+}
