@@ -12,22 +12,7 @@
 * Decouples the old monolithic design with the Model-View-Controller (MVC) pattern.
 * New _Linux_, _Android_ and _iOS_ ports using _SDL3_ and Dear _ImGUI_ (See the [screenshot directory](./screenshots/)).
 
-# Builds
-Every push to `main` and every pull request is built and tested on all platforms by
-[GitHub Actions](.github/workflows/build.yml). The packages are kept with each run (the
-*Artifacts* of the run in the *Actions* tab):
-
-| Platform | Package | Notes |
-|---|---|---|
-| Windows | `optica-<version>-windows-x64.zip` | the Win32 + GDI program |
-| Linux | `optica-<version>-linux-x86_64.tar.gz` | SDL3 + Dear ImGui; X11 |
-| Android | `optica-<version>-android.apk` | signed with a debug key: allow installing unknown apps |
-| iOS | `optica-<version>-ios-simulator.zip` | `Optica.app` for the iOS Simulator |
-| iOS | `optica-<version>-ios-unsigned.ipa` | must be signed with your certificate before it installs |
-
-To publish a release with these packages, push a tag starting with `v`:
-
-```
-git tag v1.0.0
-git push origin v1.0.0
-```
+# Building
+Optica builds with CMake on Windows, Linux, Android and iOS. [BUILDING.md](./BUILDING.md)
+describes how to install the dependencies and compile it for each platform, and how the
+GitHub Actions builds publish ready-made packages with each release.
