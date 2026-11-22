@@ -1,0 +1,191 @@
+# Builds and tests Optica on every platform and packages it:
+#
+#   Windows  optica-<version>-windows-x64.zip       the Win32 + GDI program (MSVC)
+#   Linux    optica-<version>-linux-x86_64.tar.gz   the SDL3 + Dear ImGui program
+#   Android  optica-<version>-android.apk           signed with a debug key: installs on a
+#                                                    device that allows unknown apps
+#   iOS      optica-<version>-ios-simulator.zip     Optica.app for the iOS Simulator
+#            optica-<version>-ios-unsigned.ipa      for devices; must be signed before it installs
+#
+# Every push to main, pull request and manual run builds all of them and keeps the packages
+# as the run's artifacts. Pushing a tag that starts with "v" (e.g. v1.0.0) also publishes
+# them as a GitHub release named after the tag.
+#
+# SDL3 and Dear ImGui are cloned by CMake at configure time (platform/sdl/CMakeLists.txt).
+# Third-party actions are pinned to the commit of a release, with the release in a comment.
+
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # in package names: the tag for a release, otherwise the run number
+  VERSION: ${{ github.ref_type == 'tag' && github.ref_name || format('build{0}', github.run_number) }}
+
+jobs:
+  windows:
+    name: Windows (Win32 + GDI)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure
+        run: cmake -S . -B build -A x64 -DOPTICA_FRONTEND=GDI
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $package = "optica-$env:VERSION-windows-x64"
+          New-Item -ItemType Directory $package | Out-Null
+          Copy-Item build/Release/optica.exe, Readme.md $package
+          if (Test-Path datos.txt) { Copy-Item datos.txt $package }
+          Compress-Archive -Path $package -DestinationPath "$package.zip"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: optica-*-windows-x64.zip
+          if-no-files-found: error
+
+  linux:
+    name: Linux (SDL3 + Dear ImGui)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ninja-build \
+            libx11-dev libxext-dev libxcursor-dev libxi-dev libxrandr-dev \
+            libxss-dev libxtst-dev libxfixes-dev libgl-dev libegl-dev
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPTICA_FRONTEND=SDL
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: |
+          package="optica-${VERSION}-linux-x86_64"
+          mkdir "$package"
+          cp build/platform/sdl/optica Readme.md "$package/"
+          tar -czf "$package.tar.gz" "$package"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux
+          path: optica-*-linux-x86_64.tar.gz
+          if-no-files-found: error
+
+  android:
+    name: Android (SDL3 + Dear ImGui)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # the versions android/app/build.gradle asks for; CMake 3.22.1 is what the Android
+      # Gradle plugin uses by default
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          (yes || true) | "$sdkmanager" --licenses > /dev/null
+          "$sdkmanager" --install "platforms;android-35" "ndk;28.2.13676358" "cmake;3.22.1"
+
+      - name: Build
+        working-directory: android
+        run: bash ./gradlew --no-daemon assembleDebug
+
+      - name: Package
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk "optica-${VERSION}-android.apk"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android
+          path: optica-*-android.apk
+          if-no-files-found: error
+
+  ios:
+    name: iOS (SDL3 + Dear ImGui)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Without signing: the simulator app needs none, and the device app is signed later
+      # by whoever installs it (Xcode, or a re-signing tool with their certificate).
+      - name: Build for the iOS Simulator
+        run: |
+          cmake -S . -B build-simulator -G Xcode -DCMAKE_SYSTEM_NAME=iOS \
+                -DCMAKE_OSX_SYSROOT=iphonesimulator "-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64"
+          cmake --build build-simulator --config Release -- CODE_SIGNING_ALLOWED=NO
+
+      - name: Build for devices
+        run: |
+          cmake -S . -B build-device -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64
+          cmake --build build-device --config Release -- CODE_SIGNING_ALLOWED=NO
+
+      - name: Package
+        run: |
+          simulator_app=$(find build-simulator -type d -name Optica.app -path '*Release-iphonesimulator*' | head -n 1)
+          device_app=$(find build-device -type d -name Optica.app -path '*Release-iphoneos*' | head -n 1)
+          test -n "$simulator_app" && test -n "$device_app"
+          ditto -c -k --keepParent "$simulator_app" "optica-${VERSION}-ios-simulator.zip"
+          mkdir Payload
+          cp -R "$device_app" Payload/
+          zip -qry "optica-${VERSION}-ios-unsigned.ipa" Payload
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ios
+          path: |
+            optica-*-ios-simulator.zip
+            optica-*-ios-unsigned.ipa
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v')
+    needs: [windows, linux, android, ios]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -l dist
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --repo "$GITHUB_REPOSITORY" --title "Optica $GITHUB_REF_NAME" --generate-notes
