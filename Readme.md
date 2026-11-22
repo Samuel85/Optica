@@ -13,6 +13,4 @@
 * New _Linux_, _Android_ and _iOS_ ports using _SDL3_ and Dear _ImGUI_ (See the [screenshot directory](./screenshots/)).
 
 # Building
-Optica builds with CMake on Windows, Linux, Android and iOS. [BUILDING.md](./BUILDING.md)
-describes how to install the dependencies and compile it for each platform, and how the
-GitHub Actions builds publish ready-made packages with each release.
+The documentation for building the application can be found [here](./BUILDING.md).

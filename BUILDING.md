@@ -8,14 +8,13 @@ editing rules and their unit tests):
 | Win32 + GDI | `platform/windows` | Windows |
 | SDL3 + Dear ImGui | `platform/sdl` | Linux, Android, iOS (and Windows, untested) |
 
-Everything is built with CMake. The SDL front end downloads its two libraries itself:
-the first configure clones [SDL3](https://github.com/libsdl-org/SDL) 3.4.8 and
-[Dear ImGui](https://github.com/ocornut/imgui) 1.92.9b from GitHub, so it needs **Git**
-and an internet connection. The Windows program needs nothing beyond the compiler.
+For building the application CMake is needed. The SDL front end downloads its two libraries itself:
+* [SDL3](https://github.com/libsdl-org/SDL) 3.4.8,
+* [Dear ImGui](https://github.com/ocornut/imgui) 1.92.9b.
 
-All platforms need a **C++20 compiler**. The versions below are the ones the
-[continuous integration](#continuous-integration-and-releases) builds with; older ones
-may work but are not tested.
+Both libraries will be downloaded automatically from Github.
+
+All platforms need a **C++20 compiler**. The versions below are the ones the [continuous integration](#continuous-integration-and-releases) builds with; older ones may work but are not tested.
 
 - [Windows](#windows)
 - [Linux](#linux)
@@ -30,18 +29,10 @@ may work but are not tested.
 
 - **Visual Studio 2022 or newer** with the *Desktop development with C++* workload. It
   includes the MSVC compiler and CMake. The free Community edition is enough.
-  With [winget](https://learn.microsoft.com/windows/package-manager/winget/):
-
-  ```
-  winget install Microsoft.VisualStudio.2022.Community --override "--add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --passive"
-  ```
-
-- **Git**, to get the source: `winget install Git.Git`
 
 ### Build
 
-From a *Developer PowerShell for VS* (or any terminal where `cmake` is found), in the
-project folder:
+From a *Developer PowerShell for VS* (or any terminal where `cmake` is found), in the project folder:
 
 ```
 cmake -S . -B build -A x64
@@ -49,23 +40,19 @@ cmake --build build --config Release
 ctest --test-dir build -C Release
 ```
 
-The program is `build\Release\optica.exe`.
+The program will be located at `build\Release\optica.exe`.
 
-You can also open the project folder directly in Visual Studio (*File > Open > Folder*):
-it reads `CMakeLists.txt` and offers the `optica` target.
+You can also open the project folder directly in Visual Studio (*File > Open > Folder*) and select the project `optica` as a target and compile.
 
-On Windows the default front end is the Win32 + GDI one. The SDL front end can be chosen
-with `-DOPTICA_FRONTEND=SDL` (see [Build options](#build-options)); it is not tested on
-Windows.
+On Windows the default front end is the Win32 + GDI one. The SDL front end can be chosen with `-DOPTICA_FRONTEND=SDL` (see [Build options](#build-options)); it is not tested on Windows.
 
 ## Linux
 
 ### Dependencies
 
-A C++20 compiler (GCC 11 or newer, or Clang), CMake 3.22 or newer, Git, and the X11
-and OpenGL development files SDL3 builds against.
+A C++20 compiler (GCC 11 or newer, or Clang), CMake 3.22 or newer, Git, and the X11 and OpenGL development files SDL3 builds against.
 
-Debian and Ubuntu (this is what the continuous integration installs on Ubuntu 24.04):
+Ubuntu (tested on Ubuntu 24.04):
 
 ```
 sudo apt-get update
@@ -74,15 +61,13 @@ sudo apt-get install build-essential cmake git ninja-build \
     libxss-dev libxtst-dev libxfixes-dev libgl-dev libegl-dev
 ```
 
-Fedora (the same libraries under Fedora's names; not tested):
-
 ```
 sudo dnf install gcc-c++ cmake git ninja-build \
     libX11-devel libXext-devel libXcursor-devel libXi-devel libXrandr-devel \
     libXScrnSaver-devel libXtst-devel libXfixes-devel mesa-libGL-devel mesa-libEGL-devel
 ```
 
-`ninja-build` is optional: without it, leave out `-G Ninja` below.
+Using `ninja-build` is optional. If this is not installed remove `-G Ninja` on the following instructions.
 
 ### Build
 
@@ -94,8 +79,7 @@ cmake --build build
 ctest --test-dir build
 ```
 
-The program is `build/platform/sdl/optica`. It needs no SDL installed to run: SDL is
-linked into it and loads X11 and OpenGL when it starts.
+The program will be located in `build/platform/sdl/optica`. It needs no SDL installed to run: SDL is linked into it and loads X11 and OpenGL when it starts.
 
 ## Android
 
@@ -138,7 +122,7 @@ bash ./gradlew assembleDebug   # Linux and macOS
 gradlew assembleDebug          # Windows
 ```
 
-The APK is `android/app/build/outputs/apk/debug/app-debug.apk`. It is signed with the
+The APK will be located in `android/app/build/outputs/apk/debug/app-debug.apk`. It is signed with the
 debug key, so it installs on a device that allows installing unknown apps, or with
 `adb install android/app/build/outputs/apk/debug/app-debug.apk`.
 
@@ -211,24 +195,3 @@ On Linux and Windows, an SDL3 already installed on the system (3.2 or newer) is 
 instead of downloading it, when CMake finds it.
 
 The unit tests (`ctest`) are built for Windows and Linux, not for Android or iOS.
-
-## Continuous integration and releases
-
-Every push to `main` and every pull request is built and tested on all platforms by
-[GitHub Actions](.github/workflows/build.yml). The packages are kept with each run, as
-the run's *Artifacts* in the *Actions* tab:
-
-| Platform | Package | Notes |
-|---|---|---|
-| Windows | `optica-<version>-windows-x64.zip` | the Win32 + GDI program |
-| Linux | `optica-<version>-linux-x86_64.tar.gz` | SDL3 + Dear ImGui; X11 |
-| Android | `optica-<version>-android.apk` | signed with a debug key: allow installing unknown apps |
-| iOS | `optica-<version>-ios-simulator.zip` | `Optica.app` for the iOS Simulator |
-| iOS | `optica-<version>-ios-unsigned.ipa` | must be signed with your certificate before it installs |
-
-To publish a release with these packages, push a tag starting with `v`:
-
-```
-git tag v1.0.0
-git push origin v1.0.0
-```
